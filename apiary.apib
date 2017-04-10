@@ -1,0 +1,602 @@
+FORMAT: 1A
+HOST: https://api-test.cloudloyalty.ru/
+
+# CloudLoyalty API
+
+Процессинг представляет собой веб-приложение, предоставляющее API по протоколу HTTPS.
+
+Все HTTP-запросы выполняются методом POST, тело которого содержит валидный JSON-документ. В ответе возвращается также валидный JSON-документ с необходимыми данными. Соответственно, каждый запрос должен содержать HTTP-заголовки ```Accept: application/json``` и ```Content-Type: application/json```.
+
+Базовый URL процессинга: https://api.cloudloyalty.ru/ (может быть изменен в ходе эксплуатации по договоренности сторон).
+
+### Версия протокола
+
+В каждом запросе должна передаваться версия протокола, по которой осуществляется взаимодействие. Номер версии передается в заголовке HTTP-запроса ```X-Processing-Version```:
+```
+POST https:// api.cloudloyalty.ru/get-balance HTTP/1.1
+Accept: application/json
+Content-Type: application/json
+Cache-Control: no-cache
+X-Processing-Version: 1.0
+
+<Request body>
+```
+
+Текущая версия протокола: ```1.0```.
+
+### Аутентификация запросов
+
+Для защиты от несанкционированного доступа к процессингу включает в себя механизм аутентификации запросов.
+
+Каждый запрос должен содержать секретный ключ, который не должен быть известен третьим лицам. Секретный ключ передается в заголовке ```X-Processing-Key``` HTTP-запроса:
+```
+POST https://api.cloudloyalty.ru/get-balance HTTP/1.1
+Accept: application/json
+Content-Type: application/json
+Cache-Control: no-cache
+X-Processing-Version: 1.0
+X-Processing-Key: secret_key_string
+
+<Request body>
+```
+
+Защита ключа при передаче запроса по сети обеспечивается использованием протокола HTTPS при обращении к процессингу.
+
+При получении запроса, не содержащего ключ, либо содержащего неверный ключ, процессинг возвращает ошибку ```403 Forbidden```.
+
+### Форматы данных
+
+#### Дата и время
+С целью учёта локального времени при регистрации и выполнении операций отметка даты и времени во всех документах (и выгрузках), пересылаемых между системами форматируется в соответствии с RFC 3339 "Date and Time on the Internet: Timestamps" (http://tools.ietf.org/html/rfc3339).
+
+Пример: ```1996-12-19T16:39:57-08:00```
+> This represents 39 minutes and 57 seconds after the 16th hour of December 19th, 1996 with an offset of -08:00 from UTC (Pacific Standard Time). Note that this is equivalent to 1996-12-20T00:39:57Z in UTC.
+
+
+#### Денежные величины
+Все денежные величины (стоимость товаров, суммы покупки) указываются в рублях. С технической точки зрения они представляются вещественным числом с фиксированной точностью (2 знака после запятой).
+
+#### Целочисленные величины
+К целочисленным величинам относятся: количество товаров, суммы бонусов.
+
+### Обработка ошибок
+
+Основные ошибки принятия запроса обозначаются кодами ответа HTTP:
+
+| Код ответа                      | Описание ошибки                                   |
+|---------------------------------|---------------------------------------------------|
+| ```404 Not Found```             | Неверный адрес для отправки запроса               |
+| ```403 Forbidden```             | Ключ аутентификации не передан или некорректен    |
+| ```405 Not Allowed```           | Неверный тип запроса (например, GET вместо POST)  |
+| ```500 Internal Server Error``` | Сервер не выполнил запрос из-за внутренней ошибки |
+
+При ответах сервера, отличных от ```200 OK```, тело не содержит JSON-документ.
+
+#### Ошибки процессинга
+
+При возникновении ошибок во время обработки запросов, процессинг формирует ответный JSON документ следующего содержания:
+```
+{
+   "errorCode":1,
+   "description":"Чек не обработан процессингом или обработан с ошибкой"
+}
+```
+
+Параметры ответа:
+- ```errorCode``` - цифровой код ошибки
+- ```description``` - текстовое описание ошибки
+
+HTTP-код ответа с описанием ошибки - ```200 OK```.
+
+
+#### Коды ошибок процессинга
+
+| Код       | Описание ошибки                                                 |
+|-----------|-----------------------------------------------------------------|
+| 1         | Чек не обработан процессингом или обработан с ошибкой           |
+| 2         | В запросе к процессингу обнаружена ошибка или неверный вид JSON |
+| 3         | Номер клиента не найден                                         |
+| 4         | Аккаунт клиента заблокирован                                    |
+| 5         | Не найден магазин                                               |
+| 6         | Списание бонусов превышает допустимое значение                  |
+| 7         | Расчет покупки не выполнялся                                    |
+| 10        | Возвращаемый товар не найден в чеке продажи                     |
+| 11        | Сумма возврата больше суммы продажи                             |
+| 13        | Чек продажи не найден на сервере процессинга                    |
+| 14        | Чек для отмены не найден                                        |
+| 15        | Отмена допускается только для последней операции                |
+| 16        | Превышен допустимый интервал времени для отмены операции        |
+| 17        | Чек с данным номером уже обработан                              |
+| 18        | Бонусы по данному чеку не были заморожены                       |
+| 19        | Бонусы по данному чеку уже заморожены                           |
+| 20        | Номер клиента не валиден                                        |
+| 21        | Продажа не найдена                                              |
+| 22        | Не передан ключ аутентификации                                  |
+| 23        | Клиент не аутентифицирован                                      |
+| 24        | Клиент уже существует                                           |
+
+## Создание бонусного счета клиента [/new-client]
+
+Метод создает бонусный счет клиента для последующего начисления и списания бонусов.
+
+### Пример [POST]
+
++ Attributes (object)
+    + client (object, required)
+        + phoneNumber (string, required) - номер телефона клиента
+        + email (string) - адрес электронной почты клиента
+        + fullName (string) - фамилия, имя и отчество
+        + surname (string) - фамилия отдельно
+        + name (string) - имя отдельно
+        + patronymicName (string) - отчество отдельно
+        + gender (number) - пол клиента
+
+            Поддерживаемые значения:
+            - 0 - пол неизвестен,
+            - 1 - мужской,
+            - 2 - женский
+        
+        + birthdate (string) - дата рождения
+
+            Возможные форматы:
+            - ```1967-11-21T00:00:00+04:00```
+            - ```1967-11-21```
+            - ```11-21``` - если известен только день в году
+
++ Request (application/json)
+
+    + Headers
+
+            Accept: application/json
+            X-Processing-Version: 1.0
+            X-Processing-Key: 00000000-0000-0000-0000-000000000000
+
+    + Body
+    
+            {
+                "client": {
+                    "phoneNumber":"+79251112223",
+                    "email":"zhiglov@ya.ru",
+                    "fullName":"Жиглов Глеб Евгеньевич",
+                    "gender":1,
+                    "birthdate":"1967-11-21T00:00:00+04:00"
+                }
+            }
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + client (object)
+            + phoneNumber (string) - номер телефона клиента
+            + bonuses (number) -  баланс доступных бонусов
+            + pendingBonuses (number) - баланс ожидаемых бонусов
+            + fullName (string) - фамилия, имя и отчество
+        + bonuses (array)
+            + (object)
+                + expireAt (string) - дата сгорания бонуса
+                + amount (number) - количество бонусов
+
+    + Body
+
+            {
+               "client":{
+                  "phoneNumber":"+79251112223",
+                  "bonuses":1000,
+                  "pendingBonuses":400,
+                  "fullName":"Жиглов Глеб Евгеньевич"
+               },
+               "bonuses":[
+                  {
+                     "expireAt":"2014-12-31T23:55:32+04:00",
+                     "amount":100
+                  }
+               ]
+            }
+
+## Получение баланса [/get-balance]
+
+Метод позволяет узнать количество ожидаемых и доступных бонусов на балансе пользователя и ФИО владельца. Также метод возвращает информацию по бонусам, которые сгорят в ближайшие 30 дней.
+
+### Пример [POST]
+
++ Attributes
+    + phoneNumber (string, required) - номер телефона клиента, по которому идет расчёт баланса
+
++ Request (application/json)
+
+    + Headers
+
+            Accept: application/json
+            X-Processing-Version: 1.0
+            X-Processing-Key: 00000000-0000-0000-0000-000000000000
+
+    + Body
+
+            {
+                "phoneNumber":"+79251112223"
+            }
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + client (object)
+            + phoneNumber (string) - номер телефона клиента
+            + bonuses (number) -  баланс доступных бонусов
+            + pendingBonuses (number) - баланс ожидаемых бонусов
+            + fullName (string) - фамилия, имя и отчество
+        + bonuses (array)
+            + (object)
+                + expireAt (string) - дата сгорания бонуса
+                + amount (number) - количество бонусов
+
+    + Body
+
+            {
+               "client":{
+                  "phoneNumber":"+79251112223",
+                  "bonuses":1000,
+                  "pendingBonuses":400,
+                  "fullName":"ФИО"
+               },
+               "bonuses":[
+                  {
+                     "expireAt":"2014-12-31T23:55:32+04:00",
+                     "amount":100
+                  }
+               ]
+            }
+
+## Расчёт покупки [/calculate-purchase]
+
+Запрос расчета бонусов предназначен для предварительного расчёта количества бонусов к списанию и/или начислению при покупке с использованием системы лояльности. 
+
+Реального начисления/списания бонусов не происходит, система лояльности только делает расчёт.
+
+В случае изменения чека необходимо отправить запрос заново - в этом случае прежний расчёт по этому номеру документа будет аннулирован.
+
+### Пример [POST]
+
++ Attributes (object)
+    + calculate (object, required)
+        + phoneNumber (string, required) - номер телефона клиента, по которому нужно произвести расчёт продажи
+        + totalAmount (number, required) - общая сумма чека
+        + doCollectBonuses (boolean, required) - если на данную покупку система лояльности должна начислить бонусы, то значение «true», если на данную покупку начисление бонусов не разрешено, то значение «false»
+        + doApplyBonuses (boolean, required) - если за покупку система лояльности может списать бонусы, то значение «true», если по данной покупке списание бонусов не разрешено, то значение «false»
+
++ Request (application/json)
+
+    + Headers
+
+            Accept: application/json
+            X-Processing-Version: 1.0
+            X-Processing-Key: 00000000-0000-0000-0000-000000000000
+
+    + Body
+
+            {
+               "calculate":{
+                  "phoneNumber":"+79251112223",
+                  "totalAmount":50000.00,
+                  "doCollectBonuses":true,
+                  "doApplyBonuses":true
+               }
+            }
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + calculation (object)
+            + phoneNumber (string) - номер телефона клиента
+            + totalAmount (number) - общая сумма
+            + collectableBonuses (number) - общая сумма бонусов, начисляемая на чек при выборе операции «Начисление»
+            + appliableBonuses (number) - максимальная сумма бонусов, доступная для списания по чеку при выборе операции «Списание»
+
+    
+    + Body
+    
+            {
+               "calculation":{
+                  "phoneNumber":"+79251112223",
+                  "totalAmount":49000.00,
+                  "collectableBonuses":1000,
+                  "appliableBonuses":4900
+               }
+            }
+
+## Выполнение покупки [/apply-purchase]
+
+Метод выполняет операцию начисления и/или списания бонусов.
+
+Возможны три варианта работы с бонусами:
+- Только начисление бонусов клиенту 
+- Только списание бонусов с клиента
+- Сначала списать бонусы с клиента, а затем начислить на оставшуюся оплаченную денежными средствами сумму их снова.
+
+Для операций списания и списания-и-начисления в запросе передаются суммы списания бонусов на весь чек. Общая сумма списания бонусов не должны превышать значения, полученные в результате выполнения метода расчета покупки. Запрос предполагает наличие информации обо всех товарах в чеке и типе продажи.
+
+### Пример [POST]
+
++ Attributes (object)
+    + transaction (object, required)
+        + phoneNumber (string, required) - номер телефона клиента, по которому производиться продажа
+        + id (string, required) - номер транзакции или чека в системе партнера (из 1С)
+        + executedAt (string, required) - дата и время совершения транзакции
+        + shopCode (string, required) - код магазина, в котором осуществляется операция
+        + shopName (string, required) - полное название магазина, в котором осуществляется операция 
+        + cashier (string) - имя продавца, который оформил продажу товара
+        + cashierId (string) - табельный номер продавца, который оформил продажу товара
+        + totalAmount (number, required) - общая сумма чека
+        + loyaltyAction (string, required) - выбранная операция с бонусами по данному чеку
+    
+            Возможны следующие значения:
+            - collect - бонусы будут только начислены для клиента
+            - apply - бонусы будут только списаны с клиента
+            - apply-collect - бонусы будут сначала списаны, а затем начислены на оставшуюся сумму для клиента
+
+        + applyBonuses (number, required) - количество используемых бонусов для покупки
+        + items (array) - список товаров в чеке
+            + (object)
+                + sku (string, required) - артикул товара
+                + itemTitle (string, required) - название товара
+                + itemCount (number, required) - количество товара в чеке
+                + price (number, required) - цена единицы товара
+
++ Request (application/json)
+
+    + Headers
+
+            Accept: application/json
+            X-Processing-Version: 1.0
+            X-Processing-Key: 00000000-0000-0000-0000-000000000000
+
+    + Body
+
+            {
+               "transaction":{
+                  "phoneNumber":"+79251112223",
+                  "id":"ATR0000000000001235",
+                  "executedAt":"2014-05-30T13:45:32+04:00",
+                  "shopCode":"ATR",
+                  "shopName":"Atrium",
+                  "cashier":"Иванов Иван Иванович",
+                  "cashierId":"A0000275",
+                  "totalAmount":50000.00,
+                  "loyaltyAction":"apply",
+                  "paidAmount":49000.00,
+                  "applyBonuses":1000,
+                  "items":[
+                     {
+                        "sku":"MD775RU/A",
+                        "itemTitle":"Товар для продажи",
+                        "itemCount":2,
+                        "price":50000.00
+                     }
+                  ]
+               }
+            }
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + confirmation (object)
+            + phoneNumber - номер телефона клиента
+            + purchaseId - номер транзакции покупки в системе партнера (чек в 1С)
+            + totalAmount - общая сумма чека
+            + paidAmount - сумма оплаченная денежными средствами
+            + bonuses - обновлённая информация о бонусах клиента
+                + applied - количество потраченных бонусов за транзакцию
+                + collected - количество накопленных бонусов
+                
+                    В зависимости от операции, поля applied и collected могут иметь значение 0.
+                
+                + pending - количество ожидаемых бонусов для использования
+                
+                    Поле pending будет содержать значение collected и ожидаемых бонусов до совершения транзакции.
+                
+                + available - количество доступных бонусов
+
+
+
+    + Body
+
+            {
+               "confirmation":{
+                  "phoneNumber":"+79251112223",
+                  "purchaseId":"ATR0000000000001235",
+                  "totalAmount":49000.00,
+                  "paidAmount":48000.00,
+                  "bonuses":{
+                     "applied":1000,
+                     "collected":10,
+                     "pending":410,
+                     "available":0
+                  }
+               }
+            }
+
+## Расчет возврата товара [/calculate-return]
+
+Запрос расчета возврата товара предназначен для предварительного расчёта количества ожидаемых бонусов, которое будет списано с клиента. 
+
+Реального аннулирования бонусов не происходит, система лояльности только делает расчёт. 
+
+### Пример [POST]
+
++ Attributes (object)
+    + calculate (object, required)
+        + phoneNumber (string, required) - номер телефона клиента
+        + purchaseId (string, required) - номер транзакции в системе партнера при покупке товара (чек в 1С)
+        + refundAmount (number, required) - общая сумма возвращаемого товара
+
++ Request (application/json)
+
+    + Headers
+
+            Accept: application/json
+            X-Processing-Version: 1.0
+            X-Processing-Key: 00000000-0000-0000-0000-000000000000
+
+    + Body
+
+            {
+               "calculate":{
+                  "phoneNumber":"+79251112223",
+                  "purchaseId":"ATR0000000000001235",
+                  "refundAmount":9000.00
+               }
+            }
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + calculation (object)
+            + phoneNumber (string) - номер телефона клиента
+            + purchaseId (string) - номер транзакции в системе партнера при покупку товара (чек в 1С)
+            + refundAmount (number) - общая сумма возвращаемого товара 
+            + collectedBonuses (number) - количество бонусов полученных при совершении покупки
+            + cancelledBonuses (number) - ожидаемое количество бонусов для отмены
+
+    + Body
+
+            {
+               "calculation":{
+                  "phoneNumber":"+79251112223",
+                  "purchaseId":"ATR0000000000001235",
+                  "refundAmount":9000.00,
+                  "collectedBonuses":49,
+                  "cancelledBonuses":9
+               }
+            }
+
+## Возврат товара [/apply-return]
+
+Метод совершает аннулирование/перерасчет ожидаемых бонусов полученных при совершении покупки. Запрос предполагает наличие информации обо всех товарах в возврате. 
+
+Важно: Если ожидаемые бонусы стали доступны для использования, система вернет ошибку.
+
+### Пример [POST]
+
++ Attributes (object)
+    + transaction (object, required)
+        + phoneNumber (string, required) - номер телефона клиента, по которому нужно вернуть товар
+        + id (string, required) - номер транзакции возврата в системе партнера (из 1С)
+        + executedAt (string, required) - дата и время совершения транзакции
+        + purchaseId (string, required) - номер транзакции/чека при совершении покупки товара в системе партнера (из 1С) 
+        + refundAmount (number, required) - общая сумма возвращаемых товаров
+        + shopCode (string, required) - код магазина, в котором осуществляется операция
+        + shopName (string, required) - полное название магазина, в котором осуществляется операция 
+        + cashier (string) - имя продавца, который оформил возврат товара
+        + cashierId (string) - табельный номер продавца, который оформил возврат товара 
+        + items (array) - список товаров для возврата
+            + (object)
+                + sku (string, required) - артикул товара для возврата
+                + itemTitle (string, required) - название товара
+                + itemCount (number, required) - количество товара в чеке
+                + price (number, required) - цена единицы товара
+
+
++ Request (application/json)
+
+    + Headers
+
+            Accept: application/json
+            X-Processing-Version: 1.0
+            X-Processing-Key: 00000000-0000-0000-0000-000000000000
+
+    + Body
+
+            {
+               "transaction":{
+                  "phoneNumber":"+79251112223",
+                  "id":"ATR0000000000001236",
+                  "executedAt":"2014-05-30T13:45:32+04:00",
+                  "purchaseId":"ATR0000000000001235",
+                  "refundAmount":9000.00,
+                  "shopCode":"ATR",
+                  "shopName":"Atrium",
+                  "cashier":"Иванов Иван Иванович",
+                  "cashierId":"A0000275",
+                  "items":[
+                     {
+                        "sku":"MD772RU/A",
+                        "itemTitle":"Товар для продажи",
+                        "itemCount":2,
+                        "price":4500.00
+                     }
+                  ]
+               }
+            }
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + confirmation (object)
+            + phoneNumber (number) - номер телефона клиента
+            + refundId (string) - номер транзакции для возврата товара в системе партнера
+            + refundAmount (number) - общая сумма возвращённого товара
+            + cancelledBonuses (number) - количество аннулированных бонусов 
+
+    + Body
+
+            {
+               "confirmation":{
+                  "phoneNumber":"+79251112223",
+                  "refundId":"ATR0000000000001236",
+                  "refundAmount":9000.00,
+                  "cancelledBonuses":9
+               }
+            }
+
+## Отмена операции [/revert-purchase]
+
+Используется для отмены операций покупки, при возникновении ошибок во время обработки кассовой операции.
+
+Важно: Допускается отменять только последнюю проведенную операцию по клиенту. Отмена доступна в течение 30 минут после совершения операции.
+
+### Пример [POST]
+
++ Attributes
+    + transaction (object, required)
+        + phoneNumber (string, required) - номер телефона клиента, по которому нужно произвести расчёт продажи 
+        + id (string, required) - номер транзакции отмены покупки в системе партнера (из 1С)
+        + executedAt (string, required) - дата и время совершения транзакции 
+        + purchaseId (string, required) - номер транзакции покупки в системе партнера (чек в 1С)
+
++ Request (application/json)
+
+    + Headers
+
+            Accept: application/json
+            X-Processing-Version: 1.0
+            X-Processing-Key: 00000000-0000-0000-0000-000000000000
+
+    + Body
+
+            {
+               "transaction":{
+                  "phoneNumber":"+79251112223",
+                  "id":"ATR0000000000001236",
+                  "executedAt":"2014-05-30T13:45:32+04:00",
+                  "purchaseId":"ATR0000000000001235"
+               }
+            }
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + confirmation (object)
+            + phoneNumber - номер телефона клиента 
+            + expectedBonuses - баланс ожидаемых бонусов
+            + availableBonuses - баланс доступных бонусов 
+            + cancelledBonuses - количество отмененных бонусов
+
+    + Body
+
+            {
+               "confirmation":{
+                  "phoneNumber":"+79251112223",
+                  "expectedBonuses":400,
+                  "availableBonuses":1000,
+                  "cancelledBonuses":100
+               }
+            }
