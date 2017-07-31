@@ -499,6 +499,9 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                 + itemTitle (string, required) - название товара
                 + itemCount (number, required) - количество товара в чеке
                 + price (number, required) - цена единицы товара
+                + amount (number) - сумма
+
+                    Если не указана, расчитывается как price * itemCount.
 
 + Request (application/json)
 
@@ -655,7 +658,9 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                 + itemTitle (string, required) - название товара
                 + itemCount (number, required) - количество товара в чеке
                 + price (number, required) - цена единицы товара
+                + amount (number) - сумма
 
+                    Если не указана, расчитывается как price * itemCount.
 
 + Request (application/json)
 
