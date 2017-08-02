@@ -7,6 +7,9 @@ before_install:
 - mkdir io
 - docker run -it --rm -v $(pwd):/doc bukalapak/snowboard html -o io/index.html apiary.apib
 
+script:
+  echo nop
+
 deploy:
   provider: pages
   skip_cleanup: true
