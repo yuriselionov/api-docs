@@ -4,8 +4,8 @@ services:
   - docker
 
 before_install:
-- docker pull cloudloyalty/api-docs
-- docker pull cloudloyalty/cloudloyalty.github.io
-- docker run -it --rm -v cloudloyalty/cloudloyalty.github.io:/doc -v cloudloyalty/api-docs:/api-docs bukalapak/snowboard html -o index.html -s /api-docs/apiary.apib
+- docker pull bukalapak/snowboard
+- docker run -it --rm -v $(pwd):/doc bukalapak/snowboard html -o index.html -s apiary.apib
 
 script:
+- cat index.html
