@@ -17,4 +17,4 @@ deploy:
   local_dir: io
   repo: cloudloyalty.github.io
   on:
-    branch: master
+    branch: travis
