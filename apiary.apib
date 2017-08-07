@@ -169,6 +169,75 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                 }
             }
 
+    + Schema
+
+            {
+                "$schema": "http://json-schema.org/draft-04/schema#",
+                "type": "object",
+                "properties": {
+                    "client": {
+                        "type": "object",
+                        "properties": {
+                            "phoneNumber": {
+                                "type": "string"
+                            },
+                            "email": {
+                                "type": "string"
+                            },
+                            "fullName": {
+                                "type": "string"
+                            },
+                            "surname": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "patronymicName": {
+                                "type": "string"
+                            },
+                            "gender": {
+                                "type": "integer",
+                                "enum": [0, 1, 2]
+                            },
+                            "birthdate": {
+                                "type": "string",
+                                "anyOf": [
+                                    {
+                                        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}$"
+                                    },
+                                    {
+                                        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+                                    },
+                                    {
+                                        "pattern": "^[0-9]{2}-[0-9]{2}$"
+                                    }
+                                ]
+                            },
+                            "card": {
+                                "type": "string",
+                                "pattern": "^[0-9]{1,18}$"
+                            }
+                        },
+                        "anyOf": [
+                            {
+                                "required": [
+                                    "phoneNumber"
+                                ]
+                            },
+                            {
+                                "required": [
+                                    "card"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "client"
+                ]
+            }
+
 + Response 200 (application/json)
 
     + Attributes (object)
@@ -223,6 +292,34 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
             {
                 "phoneNumber":"+79251112223"
+            }
+
+    + Schema
+
+            {
+                "$schema": "http://json-schema.org/draft-04/schema#",
+                "type": "object",
+                "properties": {
+                    "phoneNumber": {
+                        "type": "string"
+                    },
+                    "card": {
+                        "type": "string",
+                        "pattern": "^[0-9]{1,18}$"
+                    }
+                },
+                "anyOf": [
+                    {
+                        "required": [
+                            "phoneNumber"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "card"
+                        ]
+                    }
+                ]
             }
 
 + Response 200 (application/json)
@@ -312,6 +409,87 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                 }
             }
 
+    + Schema
+
+            {
+                "$schema": "http://json-schema.org/draft-04/schema#",
+                "type": "object",
+                "properties": {
+                    "phoneNumber": {
+                        "type": "string"
+                    },
+                    "card": {
+                        "type": "string",
+                        "pattern": "^[0-9]{1,18}$"
+                    },
+                    "client": {
+                        "type": "object",
+                        "properties": {
+                            "phoneNumber": {
+                                "type": "string"
+                            },
+                            "email": {
+                                "type": "string"
+                            },
+                            "surname": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "patronymicName": {
+                                "type": "string"
+                            },
+                            "fullName": {
+                                "type": "string"
+                            },
+                            "gender": {
+                                "type": "integer",
+                                "enum": [0, 1, 2]
+                            },
+                            "birthdate": {
+                                "type": "string",
+                                "anyOf": [
+                                    {
+                                        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}$"
+                                    },
+                                    {
+                                        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+                                    },
+                                    {
+                                        "pattern": "^[0-9]{2}-[0-9]{2}$"
+                                    }
+                                ]
+                            },
+                            "card": {
+                                "type": "string",
+                                "pattern": "^[0-9]{1,18}$"
+                            },
+                            "isEmailSubscribed": {
+                                "type": "boolean"
+                            },
+                            "isPhoneSubscribed": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                },
+                "anyOf": [
+                    {
+                        "required": [
+                            "phoneNumber",
+                            "client"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "card",
+                            "client"
+                        ]
+                    }
+                ]
+            }
+
 + Response 200 (application/json)
 
     + Attributes (object)
@@ -358,7 +536,7 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
     + calculate (object, required)
         + phoneNumber (string) - номер телефона клиента, по которому нужно произвести расчёт продажи
         + card (string) - карта клиента
-        + totalAmount (number, required) - общая сумма чека для расчета бонусов
+        + totalAmount (number, required) - общая сумма чека до вычета бонусов
 
             Значение должно учитывать скидки, применяемые магазином.
 
@@ -433,6 +611,82 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                }
             }
 
+    + Schema
+
+            {
+                "$schema": "http://json-schema.org/draft-04/schema#",
+                "definitions": {
+                    "positiveAmount": {
+                        "type": "number",
+                        "minimum": 0,
+                        "exclusiveMinimum": true
+                    }
+                },
+                "type": "object",
+                "properties": {
+                    "calculate": {
+                        "type": "object",
+                        "properties": {
+                            "phoneNumber": {
+                                "type": "string"
+                            },
+                            "card": {
+                                "type": "string",
+                                "pattern": "^[0-9]{1,18}$"
+                            },
+                            "totalAmount": {
+                                "$ref": "#/definitions/positiveAmount"
+                            },
+                            "doApplyBonuses": {
+                                "type": "boolean",
+                                "default": true
+                            },
+                            "doCollectBonuses": {
+                                "type": "boolean",
+                                "default": true
+                            },
+                            "applyingAmount": {
+                                "type": "number",
+                                "minimum": 0
+                            },
+                            "loyaltyAction": {
+                                "enum": [
+                                    "collect",
+                                    "apply",
+                                    "apply-collect"
+                                ]
+                            },
+                            "applyBonuses": {
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "collectBonuses": {
+                                "type": "integer",
+                                "minimum": 0
+                            }
+                        },
+                        "required": [
+                            "totalAmount"
+                        ],
+                        "anyOf": [
+                            {
+                                "required": [
+                                    "phoneNumber"
+                                ]
+                            },
+                            {
+                                "required": [
+                                    "card"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "calculate"
+                ]
+            }
+
 ## Выполнение покупки [/apply-purchase]
 
 Метод выполняет операцию начисления и/или списания бонусов.
@@ -458,7 +712,7 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
         + shopName (string, required) - полное название магазина, в котором осуществляется операция 
         + cashier (string) - имя продавца, который оформил продажу товара
         + cashierId (string) - табельный номер продавца, который оформил продажу товара
-        + totalAmount (number, required) - общая сумма чека для расчета бонусов
+        + totalAmount (number, required) - общая сумма чека до вычетащккус бонусов
 
             Значение должно учитывать скидки, применяемые магазином.
 
@@ -536,6 +790,133 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                }
             }
 
+    + Schema
+
+            {
+                "$schema": "http://json-schema.org/draft-04/schema#",
+                "definitions": {
+                    "positiveAmount": {
+                        "type": "number",
+                        "minimum": 0,
+                        "exclusiveMinimum": true
+                    }
+                },
+                "type": "object",
+                "properties": {
+                    "transaction": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "executedAt": {
+                                "type": "string",
+                                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}$"
+                            },
+                            "phoneNumber": {
+                                "type": "string"
+                            },
+                            "card": {
+                                "type": "string",
+                                "pattern": "^[0-9]{1,18}$"
+                            },
+                            "loyaltyAction": {
+                                "enum": [
+                                    "collect",
+                                    "apply",
+                                    "apply-collect"
+                                ]
+                            },
+                            "shopCode": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "shopName": {
+                                "type": "string"
+                            },
+                            "cashier": {
+                                "type": "string"
+                            },
+                            "cashierId": {
+                                "type": "string"
+                            },
+                            "totalAmount": {
+                                "$ref": "#/definitions/positiveAmount"
+                            },
+                            "applyBonuses": {
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "collectBonuses": {
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "items": {
+                                "type": "array",
+                                "minItems": 1,
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "sku": {
+                                            "type": "string"
+                                        },
+                                        "itemTitle": {
+                                            "type": "string"
+                                        },
+                                        "itemCount": {
+                                            "type": "number",
+                                            "minimum": 0,
+                                            "exclusiveMinimum": true
+                                        },
+                                        "price": {
+                                            "type": "number",
+                                            "minimum": 0
+                                        },
+                                        "amount": {
+                                            "type": "number",
+                                            "minimum": 0
+                                        },
+                                        "category": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "sku",
+                                        "itemTitle",
+                                        "itemCount",
+                                        "price"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "executedAt",
+                            "loyaltyAction",
+                            "shopCode",
+                            "shopName",
+                            "totalAmount",
+                            "applyBonuses"
+                        ],
+                        "anyOf": [
+                            {
+                                "required": [
+                                    "phoneNumber"
+                                ]
+                            },
+                            {
+                                "required": [
+                                    "card"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "transaction"
+                ]
+            }
+
 + Response 200 (application/json)
 
     + Attributes (object)
@@ -608,6 +989,59 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                   "purchaseId":"ATR0000000000001235",
                   "refundAmount":9000.00
                }
+            }
+
+    + Schema
+
+            {
+                "$schema": "http://json-schema.org/draft-04/schema#",
+                "definitions": {
+                    "positiveAmount": {
+                        "type": "number",
+                        "minimum": 0,
+                        "exclusiveMinimum": true
+                    }
+                },
+                "type": "object",
+                "properties": {
+                    "calculate": {
+                        "type": "object",
+                        "properties": {
+                            "purchaseId": {
+                                "type": "string"
+                            },
+                            "phoneNumber": {
+                                "type": "string"
+                            },
+                            "card": {
+                                "type": "string",
+                                "pattern": "^[0-9]{1,18}$"
+                            },
+                            "refundAmount": {
+                                "$ref": "#/definitions/positiveAmount"
+                            }
+                        },
+                        "required": [
+                            "purchaseId",
+                            "refundAmount"
+                        ],
+                        "anyOf": [
+                            {
+                                "required": [
+                                    "phoneNumber"
+                                ]
+                            },
+                            {
+                                "required": [
+                                    "card"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "calculate"
+                ]
             }
 
 + Response 200 (application/json)
@@ -694,6 +1128,120 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                }
             }
 
+    + Schema
+
+            {
+                "$schema": "http://json-schema.org/draft-04/schema#",
+                "definitions": {
+                    "positiveAmount": {
+                        "type": "number",
+                        "minimum": 0,
+                        "exclusiveMinimum": true
+                    }
+                },
+                "type": "object",
+                "properties": {
+                    "transaction": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "purchaseId": {
+                                "type": "string"
+                            },
+                            "executedAt": {
+                                "type": "string",
+                                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}$"
+                            },
+                            "phoneNumber": {
+                                "type": "string"
+                            },
+                            "card": {
+                                "type": "string",
+                                "pattern": "^[0-9]{1,18}$"
+                            },
+                            "refundAmount": {
+                                "$ref": "#/definitions/positiveAmount"
+                            },
+                            "shopCode": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "shopName": {
+                                "type": "string"
+                            },
+                            "cashier": {
+                                "type": "string"
+                            },
+                            "cashierId": {
+                                "type": "string"
+                            },
+                            "items": {
+                                "type": "array",
+                                "minItems": 1,
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "sku": {
+                                            "type": "string"
+                                        },
+                                        "itemTitle": {
+                                            "type": "string"
+                                        },
+                                        "itemCount": {
+                                            "type": "number",
+                                            "minimum": 0,
+                                            "exclusiveMinimum": true
+                                        },
+                                        "price": {
+                                            "type": "number",
+                                            "minimum": 0
+                                        },
+                                        "amount": {
+                                            "type": "number",
+                                            "minimum": 0
+                                        },
+                                        "category": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "sku",
+                                        "itemTitle",
+                                        "itemCount",
+                                        "price"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "purchaseId",
+                            "executedAt",
+                            "refundAmount",
+                            "shopCode",
+                            "shopName"
+                        ],
+                        "anyOf": [
+                            {
+                                "required": [
+                                    "phoneNumber"
+                                ]
+                            },
+                            {
+                                "required": [
+                                    "card"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "transaction"
+                ]
+            }
+
 + Response 200 (application/json)
 
     + Attributes (object)
@@ -749,6 +1297,57 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                   "executedAt":"2014-05-30T13:45:32+04:00",
                   "purchaseId":"ATR0000000000001235"
                }
+            }
+
+    + Schema
+
+            {
+                "$schema": "http://json-schema.org/draft-04/schema#",
+                "type": "object",
+                "properties": {
+                    "transaction": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "executedAt": {
+                                "type": "string",
+                                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}$"
+                            },
+                            "phoneNumber": {
+                                "type": "string"
+                            },
+                            "card": {
+                                "type": "string",
+                                "pattern": "^[0-9]{1,18}$"
+                            },
+                            "purchaseId": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "executedAt",
+                            "purchaseId"
+                        ],
+                        "anyOf": [
+                            {
+                                "required": [
+                                    "phoneNumber"
+                                ]
+                            },
+                            {
+                                "required": [
+                                    "card"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "transaction"
+                ]
             }
 
 + Response 200 (application/json)
